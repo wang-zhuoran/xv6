@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "user.h": "c",
+        "sysinfo.h": "c",
+        "string_view": "c",
+        "system_error": "c"
+    }
+}

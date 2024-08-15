@@ -6,6 +6,12 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
+
+struct kmem;
+void freemem(uint64 *freemem);
+void nproc(uint64* n);
+// struct sysinfo;
 
 uint64
 sys_exit(void)
@@ -95,3 +101,35 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64 sys_trace(void)
+{
+  int n;
+  if(argint(0, &n) < 0)
+    return -1;
+
+  myproc()->trace_mask = n;
+
+  return 0;
+}
+
+uint64 sys_sysinfo(void)
+{
+  struct sysinfo info;
+  // 首先把用户空间传入的sysinfo struct 读入到内核空间
+  uint64 addr;
+
+  if(argaddr(0, (uint64*)&addr) < 0)
+    return -1;
+
+  // 然后将内核空间的sysinfo struct填充
+  freemem(&info.freemem);
+  nproc(&info.nproc);
+
+  // copyout 内核空间的sysinfo struct 到用户空间
+  if(copyout(myproc()->pagetable, addr, (char*)&info, sizeof info) < 0)
+    return -1;
+
+  return 0;
+}
+
