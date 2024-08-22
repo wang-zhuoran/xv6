@@ -15,6 +15,8 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+void vmprint_helper(pagetable_t pagetable, int depth);
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -430,5 +432,31 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return 0;
   } else {
     return -1;
+  }
+}
+
+int vmprint(pagetable_t pagetable){
+  printf("page table %p\n", pagetable);
+  vmprint_helper(pagetable, 0);
+  return 0;
+}
+void vmprint_helper(pagetable_t pagetable, int depth) {
+  // there are 2^9 = 512 PTEs in a page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      for(int j = 0; j <= depth; j++) {
+        printf(".. ");
+      }
+      printf("%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+      uint64 child = PTE2PA(pte);
+      vmprint_helper((pagetable_t)child, depth + 1);
+      // pagetable[i] = 0;
+    } else if(pte & PTE_V){
+      // panic("freewalk: leaf");
+      // uint64 phaddr = (pte >> 10) << 12;
+      printf(".. .. ..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+    }
   }
 }

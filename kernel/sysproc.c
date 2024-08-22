@@ -6,7 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-
+extern pte_t * walk(pagetable_t pagetable, uint64 va, int alloc);
 uint64
 sys_exit(void)
 {
@@ -81,6 +81,35 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 bitmask = 0;
+  uint64 bitmask_va = 0;
+  uint64 start = 0;
+  int num_pages = 0;
+  if(argint(1, &num_pages) < 0)
+    return -1;
+  if(num_pages < 0 || num_pages > MAXSCAN)
+    return -1;
+
+  
+  if(argaddr(0, &start) < 0)
+    return -1;
+
+  if(argaddr(2, &bitmask_va) < 0)
+    return -1;
+
+  pte_t *pte;
+  for(int i = 0; i < num_pages; start += PGSIZE, ++i){
+    if((pte = walk(myproc()->pagetable, start, 0)) == 0)
+      panic("sys_pgaccess: pte should exist");
+    
+    if(*pte & PTE_A) {
+      bitmask |= (1 << i);
+      *pte &= ~PTE_A;
+    }
+  }
+
+  copyout(myproc()->pagetable, bitmask_va, (char*)&bitmask, sizeof(bitmask));
+
   return 0;
 }
 #endif
